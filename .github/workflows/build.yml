@@ -4,15 +4,10 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
-    paths:
-      - "ImageCompressor/**"
 
 jobs:
   build:
     runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: ImageCompressor
     steps:
       - uses: actions/checkout@v4
 
@@ -33,4 +28,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ImageCompressor-windows
-          path: ImageCompressor/dist/ImageCompressor.exe
+          path: dist/ImageCompressor.exe
