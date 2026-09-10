@@ -17,7 +17,7 @@ from tkinter import filedialog, messagebox
 
 import ttkbootstrap as ttk
 
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 THEME = "flatly"
 
@@ -32,6 +32,16 @@ def set_state(widget, enabled):
     """Portable enable/disable for ttk widgets (ttk.Scale doesn't accept
     state via .config() on some Tk builds, but the .state() API always works)."""
     widget.state(["!disabled"] if enabled else ["disabled"])
+
+
+def friendly_error(exc):
+    if isinstance(exc, UnidentifiedImageError):
+        return "Bukan file gambar yang valid / formatnya tidak didukung (kemungkinan file rusak atau sebenarnya HEIC/AVIF/dll yang diberi ekstensi lain)"
+    if isinstance(exc, FileNotFoundError):
+        return "File tidak ditemukan (mungkin sudah dipindah/dihapus)"
+    if isinstance(exc, PermissionError):
+        return "Tidak ada izin untuk membaca/menulis file ini"
+    return str(exc)
 
 
 def human_size(num_bytes):
@@ -62,7 +72,7 @@ class ImageItem:
                 self.orig_w, self.orig_h = im.size
         except Exception as exc:  # noqa: BLE001
             self.status = "Error"
-            self.error = str(exc)
+            self.error = friendly_error(exc)
 
 
 def source_pil_format(path):
@@ -246,8 +256,9 @@ class CompressorApp:
         self.tree.column("resolution", width=110, anchor="center")
         self.tree.column("size", width=100, anchor="center")
         self.tree.column("status", width=110, anchor="center")
-        self.tree.column("result", width=160, anchor="center")
+        self.tree.column("result", width=260, anchor="w")
         self.tree.tag_configure("odd", background="#f4f6f9")
+        self.tree.tag_configure("error", foreground="#d9534f")
         self.tree.grid(row=0, column=0, sticky="nsew")
 
         vsb = ttk.Scrollbar(list_frame, orient="vertical", command=self.tree.yview, bootstyle="round")
@@ -420,10 +431,15 @@ class CompressorApp:
 
     def _insert_row(self, item):
         res = f"{item.orig_w}x{item.orig_h}" if item.orig_w else "-"
-        tag = "odd" if len(self.tree.get_children()) % 2 else ""
+        result_text = item.error if item.status == "Error" else "-"
+        tags = []
+        if len(self.tree.get_children()) % 2:
+            tags.append("odd")
+        if item.status == "Error":
+            tags.append("error")
         self.tree.insert("", "end", iid=item.path, values=(
-            os.path.basename(item.path), res, human_size(item.orig_size), item.status, "-"
-        ), tags=(tag,) if tag else ())
+            os.path.basename(item.path), res, human_size(item.orig_size), item.status, result_text
+        ), tags=tuple(tags))
 
     def remove_selected(self):
         sel = self.tree.selection()
@@ -512,6 +528,12 @@ class CompressorApp:
             if self.stop_requested:
                 self.msg_queue.put(("status", item.path, "Dibatalkan"))
                 continue
+            if item.status == "Error":
+                # Already failed to open when added to the list - don't retry, just report.
+                err_count += 1
+                self.msg_queue.put(("error", item.path, item.error))
+                self.msg_queue.put(("progress", None, None))
+                continue
             try:
                 out_path, out_size = self._process_one(item, settings)
                 total_orig += item.orig_size
@@ -520,7 +542,7 @@ class CompressorApp:
                 self.msg_queue.put(("done", item.path, human_size(out_size)))
             except Exception as exc:  # noqa: BLE001
                 err_count += 1
-                self.msg_queue.put(("error", item.path, str(exc)))
+                self.msg_queue.put(("error", item.path, friendly_error(exc)))
                 traceback.print_exc()
             self.msg_queue.put(("progress", None, None))
 
@@ -574,6 +596,12 @@ class CompressorApp:
             n += 1
         return f"{base} ({n}){ext}"
 
+    def _set_row_error(self, iid, is_error):
+        tags = [t for t in self.tree.item(iid, "tags") if t != "error"]
+        if is_error:
+            tags.append("error")
+        self.tree.item(iid, tags=tuple(tags))
+
     def _poll_queue(self):
         try:
             while True:
@@ -584,10 +612,12 @@ class CompressorApp:
                     if self.tree.exists(path):
                         self.tree.set(path, "status", "Selesai")
                         self.tree.set(path, "result", payload)
+                        self._set_row_error(path, False)
                 elif kind == "error":
                     if self.tree.exists(path):
                         self.tree.set(path, "status", "Error")
-                        self.tree.set(path, "result", payload[:40])
+                        self.tree.set(path, "result", payload)
+                        self._set_row_error(path, True)
                 elif kind == "status":
                     if self.tree.exists(path):
                         self.tree.set(path, "status", payload)
