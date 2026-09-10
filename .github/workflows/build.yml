@@ -1,4 +1,4 @@
-name: Build Windows EXE
+name: Build Windows EXE and macOS App
 
 on:
   workflow_dispatch:
@@ -7,7 +7,10 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -21,11 +24,28 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Build EXE
+      - name: Build EXE (Windows)
+        if: matrix.os == 'windows-latest'
         run: pyinstaller --onefile --windowed --name ImageCompressor main.py
 
-      - name: Upload EXE artifact
+      - name: Build App (macOS)
+        if: matrix.os == 'macos-latest'
+        run: pyinstaller --windowed --name ImageCompressor main.py
+
+      - name: Zip App bundle (macOS)
+        if: matrix.os == 'macos-latest'
+        run: ditto -c -k --sequesterRsrc --keepParent dist/ImageCompressor.app dist/ImageCompressor-macOS.zip
+
+      - name: Upload EXE artifact (Windows)
+        if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: ImageCompressor-windows
           path: dist/ImageCompressor.exe
+
+      - name: Upload App artifact (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ImageCompressor-macos
+          path: dist/ImageCompressor-macOS.zip

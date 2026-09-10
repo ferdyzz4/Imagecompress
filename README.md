@@ -1,6 +1,6 @@
 # Image Compressor & Converter
 
-Aplikasi desktop Windows untuk:
+Aplikasi desktop Windows & macOS untuk:
 - **Kompres ukuran file gambar** — atur kualitas manual, atau tentukan **target ukuran file (KB)** dan aplikasi otomatis mencari kualitas terbaik yang muat di batas itu.
 - **Atur resolusi atau pertahankan resolusi asli** — bisa custom width x height (dengan kunci rasio aspek), atau skala persen (%).
 - **Konversi format**: JPG, PNG, WEBP, BMP (bebas convert antar format apa saja).
@@ -10,32 +10,32 @@ Source code: [main.py](main.py) (Python + Tkinter + Pillow, ±600 baris, sudah d
 
 ---
 
-## Catatan penting
+## Download langsung
 
-Kode ini dibuat & diuji dari macOS, sehingga **file `.exe` tidak bisa dihasilkan langsung di sini** (Windows `.exe` harus di-build di mesin Windows atau lewat CI Windows — tidak bisa cross-compile dari macOS). Pilih salah satu cara di bawah untuk mendapatkan `ImageCompressor.exe`.
+Rilis terbaru (file siap pakai untuk Windows & macOS) ada di halaman **[Releases](https://github.com/ferdyzz4/Imagecompress/releases)**.
 
-## Cara 1 — Build otomatis lewat GitHub Actions (tanpa perlu komputer Windows)
+- **Windows**: unduh `ImageCompressor.exe`, langsung double-click untuk jalankan (tidak perlu install apa pun).
+- **macOS**: unduh `ImageCompressor-macOS.zip`, extract, lalu buka `ImageCompressor.app`. Karena aplikasi ini belum ditandatangani dengan sertifikat Apple Developer (belum di-notarize), saat pertama kali dibuka macOS akan menampilkan peringatan "tidak bisa dibuka / developer tidak dikenal". Caranya: **klik kanan pada ImageCompressor.app → pilih "Open" → klik "Open" lagi** pada dialog konfirmasi (hanya perlu dilakukan sekali).
 
-1. Push folder ini ke repo GitHub Anda (butuh akun GitHub, gratis).
-2. Workflow [.github/workflows/build.yml](.github/workflows/build.yml) sudah disiapkan — otomatis jalan tiap push ke branch `main`, atau bisa dipicu manual lewat tab **Actions → Build Windows EXE → Run workflow**.
-3. Setelah selesai (~2 menit), buka run tersebut → bagian **Artifacts** → unduh `ImageCompressor-windows.zip`, di dalamnya ada `ImageCompressor.exe`.
+Setiap push ke branch `main`, GitHub Actions ([.github/workflows/build.yml](.github/workflows/build.yml)) otomatis build ulang untuk kedua platform ini — hasilnya bisa diunduh dari tab **Actions** (artifact) atau dibuatkan Release baru secara manual.
 
-```bash
-cd ImageCompressor
-git init
-git add .
-git commit -m "Image Compressor app"
-git branch -M main
-git remote add origin <URL_REPO_GITHUB_ANDA>
-git push -u origin main
-```
-
-## Cara 2 — Build manual di komputer Windows
+## Build manual — Windows
 
 1. Install [Python 3.10+](https://www.python.org/downloads/) — saat instalasi centang **"Add python.exe to PATH"**.
 2. Salin folder `ImageCompressor` ini ke komputer Windows.
 3. Double-click [build_exe.bat](build_exe.bat) — script ini otomatis membuat virtual environment, install `Pillow` & `PyInstaller`, lalu build.
 4. Hasil ada di `dist\ImageCompressor.exe` — file ini portable, tinggal disalin/dijalankan di komputer Windows lain tanpa perlu install Python.
+
+## Build manual — macOS
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt pyinstaller
+pyinstaller --windowed --name ImageCompressor main.py
+```
+
+Hasilnya ada di `dist/ImageCompressor.app`.
 
 ## Menjalankan langsung tanpa build (mode developer, Windows/Mac/Linux)
 
