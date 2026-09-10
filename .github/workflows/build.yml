@@ -26,11 +26,11 @@ jobs:
 
       - name: Build EXE (Windows)
         if: matrix.os == 'windows-latest'
-        run: pyinstaller --onefile --windowed --name ImageCompressor main.py
+        run: pyinstaller --onefile --windowed --name ImageCompressor --collect-all ttkbootstrap main.py
 
       - name: Build App (macOS)
         if: matrix.os == 'macos-latest'
-        run: pyinstaller --windowed --name ImageCompressor main.py
+        run: pyinstaller --windowed --name ImageCompressor --collect-all ttkbootstrap main.py
 
       - name: Zip App bundle (macOS)
         if: matrix.os == 'macos-latest'

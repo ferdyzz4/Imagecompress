@@ -6,7 +6,7 @@ Aplikasi desktop Windows & macOS untuk:
 - **Konversi format**: JPG, PNG, WEBP, BMP (bebas convert antar format apa saja).
 - **Bulk / batch processing** — tambahkan banyak file sekaligus atau seluruh isi folder, lalu proses semuanya dalam satu klik. Progress bar dan status per-file ditampilkan di tabel.
 
-Source code: [main.py](main.py) (Python + Tkinter + Pillow, ±600 baris, sudah diuji logikanya).
+Source code: [main.py](main.py) (Python + Tkinter/ttkbootstrap + Pillow, tampilan modern flat-UI, sudah diuji logikanya).
 
 ---
 
@@ -32,7 +32,7 @@ Setiap push ke branch `main`, GitHub Actions ([.github/workflows/build.yml](.git
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt pyinstaller
-pyinstaller --windowed --name ImageCompressor main.py
+pyinstaller --windowed --name ImageCompressor --collect-all ttkbootstrap main.py
 ```
 
 Hasilnya ada di `dist/ImageCompressor.app`.

@@ -13,9 +13,13 @@ import traceback
 from dataclasses import dataclass, field
 
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import filedialog, messagebox
+
+import ttkbootstrap as ttk
 
 from PIL import Image
+
+THEME = "flatly"
 
 SUPPORTED_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
 
@@ -183,8 +187,8 @@ class CompressorApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Image Compressor & Converter")
-        self.root.geometry("980x680")
-        self.root.minsize(860, 600)
+        self.root.geometry("1040x760")
+        self.root.minsize(900, 660)
 
         self.items = []  # list[ImageItem]
         self.msg_queue = queue.Queue()
@@ -198,138 +202,156 @@ class CompressorApp:
     def _build_ui(self):
         root = self.root
         root.columnconfigure(0, weight=1)
-        root.rowconfigure(1, weight=1)
+        root.rowconfigure(2, weight=1)
+
+        PAD = 16
+
+        # --- Header ---
+        header = ttk.Frame(root, padding=(PAD, PAD, PAD, 4))
+        header.grid(row=0, column=0, sticky="ew")
+        ttk.Label(header, text="🖼  Image Compressor & Converter",
+                  font=("TkDefaultFont", 18, "bold")).pack(anchor="w")
+        ttk.Label(header, text="Kompres, ubah resolusi, dan konversi format gambar — satu per satu atau bulk.",
+                  bootstyle="secondary").pack(anchor="w", pady=(2, 0))
 
         # --- Top toolbar: file list controls (bulk add/remove) ---
-        toolbar = ttk.Frame(root, padding=(10, 10, 10, 0))
-        toolbar.grid(row=0, column=0, sticky="ew")
-        ttk.Button(toolbar, text="Tambah File...", command=self.add_files).pack(side="left")
-        ttk.Button(toolbar, text="Tambah Folder (Bulk)...", command=self.add_folder).pack(side="left", padx=6)
-        ttk.Button(toolbar, text="Hapus Terpilih", command=self.remove_selected).pack(side="left")
-        ttk.Button(toolbar, text="Kosongkan Daftar", command=self.clear_list).pack(side="left", padx=6)
-        self.count_label = ttk.Label(toolbar, text="0 file")
+        toolbar = ttk.Frame(root, padding=(PAD, 10, PAD, 0))
+        toolbar.grid(row=1, column=0, sticky="ew")
+        ttk.Button(toolbar, text="➕ Tambah File...", bootstyle="primary",
+                   command=self.add_files).pack(side="left")
+        ttk.Button(toolbar, text="📁 Tambah Folder (Bulk)...", bootstyle="primary-outline",
+                   command=self.add_folder).pack(side="left", padx=8)
+        ttk.Button(toolbar, text="Hapus Terpilih", bootstyle="secondary-outline",
+                   command=self.remove_selected).pack(side="left")
+        ttk.Button(toolbar, text="Kosongkan Daftar", bootstyle="danger-outline",
+                   command=self.clear_list).pack(side="left", padx=8)
+        self.count_label = ttk.Label(toolbar, text="0 file", bootstyle="secondary")
         self.count_label.pack(side="right")
 
         # --- File list (Treeview) ---
-        list_frame = ttk.Frame(root, padding=(10, 8))
-        list_frame.grid(row=1, column=0, sticky="nsew")
+        list_frame = ttk.Frame(root, padding=(PAD, 10, PAD, 8))
+        list_frame.grid(row=2, column=0, sticky="nsew")
         list_frame.columnconfigure(0, weight=1)
         list_frame.rowconfigure(0, weight=1)
 
         columns = ("name", "resolution", "size", "status", "result")
-        self.tree = ttk.Treeview(list_frame, columns=columns, show="headings", selectmode="extended")
+        self.tree = ttk.Treeview(list_frame, columns=columns, show="headings",
+                                  selectmode="extended", bootstyle="primary")
         self.tree.heading("name", text="File")
         self.tree.heading("resolution", text="Resolusi")
         self.tree.heading("size", text="Ukuran Asli")
         self.tree.heading("status", text="Status")
         self.tree.heading("result", text="Hasil")
-        self.tree.column("name", width=320, anchor="w")
+        self.tree.column("name", width=340, anchor="w")
         self.tree.column("resolution", width=110, anchor="center")
         self.tree.column("size", width=100, anchor="center")
         self.tree.column("status", width=110, anchor="center")
         self.tree.column("result", width=160, anchor="center")
+        self.tree.tag_configure("odd", background="#f4f6f9")
         self.tree.grid(row=0, column=0, sticky="nsew")
 
-        vsb = ttk.Scrollbar(list_frame, orient="vertical", command=self.tree.yview)
+        vsb = ttk.Scrollbar(list_frame, orient="vertical", command=self.tree.yview, bootstyle="round")
         vsb.grid(row=0, column=1, sticky="ns")
         self.tree.configure(yscrollcommand=vsb.set)
 
         # --- Settings panel ---
-        settings = ttk.Frame(root, padding=(10, 0, 10, 8))
-        settings.grid(row=2, column=0, sticky="ew")
+        settings = ttk.Frame(root, padding=(PAD, 0, PAD, 8))
+        settings.grid(row=3, column=0, sticky="ew")
         for c in range(3):
             settings.columnconfigure(c, weight=1)
 
         # Format
-        fmt_frame = ttk.LabelFrame(settings, text="Format Output", padding=10)
-        fmt_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        fmt_frame = ttk.LabelFrame(settings, text=" 🔄  Format Output ", padding=12, bootstyle="primary")
+        fmt_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
         self.format_var = tk.StringVar(value=FORMAT_CHOICES[0])
         self.format_combo = ttk.Combobox(fmt_frame, textvariable=self.format_var,
-                                          values=FORMAT_CHOICES, state="readonly")
+                                          values=FORMAT_CHOICES, state="readonly", bootstyle="primary")
         self.format_combo.pack(fill="x")
         self.format_combo.bind("<<ComboboxSelected>>", self._on_format_change)
 
         # Compression / quality
-        comp_frame = ttk.LabelFrame(settings, text="Kompresi & Kualitas", padding=10)
-        comp_frame.grid(row=0, column=1, sticky="nsew", padx=6)
+        comp_frame = ttk.LabelFrame(settings, text=" 🗜  Kompresi & Kualitas ", padding=12, bootstyle="primary")
+        comp_frame.grid(row=0, column=1, sticky="nsew", padx=8)
 
         self.comp_mode = tk.StringVar(value="quality")
-        ttk.Radiobutton(comp_frame, text="Atur kualitas", variable=self.comp_mode,
+        ttk.Radiobutton(comp_frame, text="Atur kualitas", variable=self.comp_mode, bootstyle="primary",
                          value="quality", command=self._on_comp_mode_change).grid(row=0, column=0, sticky="w")
         self.quality_var = tk.IntVar(value=85)
-        self.quality_scale = ttk.Scale(comp_frame, from_=1, to=100, orient="horizontal",
+        self.quality_scale = ttk.Scale(comp_frame, from_=1, to=100, orient="horizontal", bootstyle="primary",
                                         variable=self.quality_var, command=self._on_quality_slide)
-        self.quality_scale.grid(row=0, column=1, sticky="ew", padx=6)
-        self.quality_label = ttk.Label(comp_frame, text="85")
+        self.quality_scale.grid(row=0, column=1, sticky="ew", padx=8)
+        self.quality_label = ttk.Label(comp_frame, text="85", width=3, bootstyle="primary")
         self.quality_label.grid(row=0, column=2, sticky="w")
         comp_frame.columnconfigure(1, weight=1)
 
-        ttk.Radiobutton(comp_frame, text="Target ukuran file (KB)", variable=self.comp_mode,
-                         value="target", command=self._on_comp_mode_change).grid(row=1, column=0, sticky="w", pady=(6, 0))
+        ttk.Radiobutton(comp_frame, text="Target ukuran file (KB)", variable=self.comp_mode, bootstyle="primary",
+                         value="target", command=self._on_comp_mode_change).grid(row=1, column=0, sticky="w", pady=(10, 0))
         self.target_kb_var = tk.StringVar(value="200")
         self.target_kb_entry = ttk.Entry(comp_frame, textvariable=self.target_kb_var, width=10, state="disabled")
-        self.target_kb_entry.grid(row=1, column=1, sticky="w", pady=(6, 0))
-        ttk.Label(comp_frame, text="KB per file").grid(row=1, column=2, sticky="w", pady=(6, 0))
+        self.target_kb_entry.grid(row=1, column=1, sticky="w", pady=(10, 0))
+        ttk.Label(comp_frame, text="KB per file", bootstyle="secondary").grid(row=1, column=2, sticky="w", pady=(10, 0))
 
-        self.quality_note = ttk.Label(comp_frame, text="", foreground="#888")
-        self.quality_note.grid(row=2, column=0, columnspan=3, sticky="w", pady=(4, 0))
+        self.quality_note = ttk.Label(comp_frame, text="", bootstyle="warning")
+        self.quality_note.grid(row=2, column=0, columnspan=3, sticky="w", pady=(6, 0))
 
         # Resolution
-        res_frame = ttk.LabelFrame(settings, text="Resolusi", padding=10)
-        res_frame.grid(row=0, column=2, sticky="nsew", padx=(6, 0))
+        res_frame = ttk.LabelFrame(settings, text=" 📐  Resolusi ", padding=12, bootstyle="primary")
+        res_frame.grid(row=0, column=2, sticky="nsew", padx=(8, 0))
 
         self.res_mode = tk.StringVar(value="keep")
-        ttk.Radiobutton(res_frame, text="Pertahankan resolusi asli", variable=self.res_mode,
+        ttk.Radiobutton(res_frame, text="Pertahankan resolusi asli", variable=self.res_mode, bootstyle="primary",
                          value="keep", command=self._on_res_mode_change).grid(row=0, column=0, columnspan=4, sticky="w")
-        ttk.Radiobutton(res_frame, text="Atur resolusi (px)", variable=self.res_mode,
-                         value="custom", command=self._on_res_mode_change).grid(row=1, column=0, columnspan=4, sticky="w", pady=(4, 0))
+        ttk.Radiobutton(res_frame, text="Atur resolusi (px)", variable=self.res_mode, bootstyle="primary",
+                         value="custom", command=self._on_res_mode_change).grid(row=1, column=0, columnspan=4, sticky="w", pady=(8, 0))
 
         self.width_var = tk.StringVar()
         self.height_var = tk.StringVar()
         self.width_entry = ttk.Entry(res_frame, textvariable=self.width_var, width=7, state="disabled")
-        self.width_entry.grid(row=2, column=0, sticky="w", padx=(18, 2))
-        ttk.Label(res_frame, text="x").grid(row=2, column=1)
+        self.width_entry.grid(row=2, column=0, sticky="w", padx=(20, 2))
+        ttk.Label(res_frame, text="×").grid(row=2, column=1)
         self.height_entry = ttk.Entry(res_frame, textvariable=self.height_var, width=7, state="disabled")
         self.height_entry.grid(row=2, column=2, sticky="w", padx=(2, 6))
 
         self.keep_aspect_var = tk.BooleanVar(value=True)
         self.keep_aspect_check = ttk.Checkbutton(res_frame, text="Kunci rasio aspek", variable=self.keep_aspect_var,
-                                                  state="disabled")
-        self.keep_aspect_check.grid(row=3, column=0, columnspan=4, sticky="w", padx=(18, 0))
+                                                  state="disabled", bootstyle="primary-round-toggle")
+        self.keep_aspect_check.grid(row=3, column=0, columnspan=4, sticky="w", padx=(20, 0), pady=(6, 0))
 
-        ttk.Radiobutton(res_frame, text="Skala persen (%)", variable=self.res_mode,
-                         value="percent", command=self._on_res_mode_change).grid(row=4, column=0, columnspan=4, sticky="w", pady=(4, 0))
+        ttk.Radiobutton(res_frame, text="Skala persen (%)", variable=self.res_mode, bootstyle="primary",
+                         value="percent", command=self._on_res_mode_change).grid(row=4, column=0, columnspan=4, sticky="w", pady=(8, 0))
         self.percent_var = tk.StringVar(value="100")
         self.percent_entry = ttk.Entry(res_frame, textvariable=self.percent_var, width=7, state="disabled")
-        self.percent_entry.grid(row=5, column=0, sticky="w", padx=(18, 0))
+        self.percent_entry.grid(row=5, column=0, sticky="w", padx=(20, 0))
 
         # --- Output folder ---
-        out_frame = ttk.Frame(root, padding=(10, 0, 10, 8))
-        out_frame.grid(row=3, column=0, sticky="ew")
+        out_frame = ttk.Frame(root, padding=(PAD, 4, PAD, 8))
+        out_frame.grid(row=4, column=0, sticky="ew")
         out_frame.columnconfigure(1, weight=1)
         ttk.Label(out_frame, text="Folder Output:").grid(row=0, column=0, sticky="w")
         self.out_dir_var = tk.StringVar(value="")
-        ttk.Entry(out_frame, textvariable=self.out_dir_var).grid(row=0, column=1, sticky="ew", padx=6)
-        ttk.Button(out_frame, text="Pilih...", command=self.choose_out_dir).grid(row=0, column=2)
-        ttk.Checkbutton(out_frame, text="Timpa file jika sudah ada",
-                         variable=tk.BooleanVar(value=False)).grid(row=1, column=1, sticky="w", pady=(4, 0))
+        ttk.Entry(out_frame, textvariable=self.out_dir_var).grid(row=0, column=1, sticky="ew", padx=8)
+        ttk.Button(out_frame, text="Pilih...", bootstyle="secondary-outline",
+                   command=self.choose_out_dir).grid(row=0, column=2)
+        ttk.Label(out_frame, text="Kosongkan untuk simpan otomatis di subfolder 'compressed' di sebelah file asli.",
+                  bootstyle="secondary").grid(row=1, column=1, sticky="w", pady=(4, 0))
 
         # --- Bottom: process bulk + progress + log ---
-        bottom = ttk.Frame(root, padding=(10, 0, 10, 10))
-        bottom.grid(row=4, column=0, sticky="ew")
-        bottom.columnconfigure(0, weight=1)
-
-        self.process_btn = ttk.Button(bottom, text="Proses Semua (Bulk)", command=self.start_processing)
-        self.process_btn.grid(row=0, column=0, sticky="w")
-        self.cancel_btn = ttk.Button(bottom, text="Batalkan", command=self.cancel_processing, state="disabled")
-        self.cancel_btn.grid(row=0, column=1, padx=6)
-
-        self.progress = ttk.Progressbar(bottom, orient="horizontal", mode="determinate")
-        self.progress.grid(row=0, column=2, sticky="ew", padx=6)
+        bottom = ttk.Frame(root, padding=(PAD, 4, PAD, 16))
+        bottom.grid(row=5, column=0, sticky="ew")
         bottom.columnconfigure(2, weight=1)
 
-        self.summary_label = ttk.Label(bottom, text="")
-        self.summary_label.grid(row=1, column=0, columnspan=3, sticky="w", pady=(6, 0))
+        self.process_btn = ttk.Button(bottom, text="🚀 Proses Semua (Bulk)", bootstyle="success",
+                                       command=self.start_processing)
+        self.process_btn.grid(row=0, column=0, sticky="w", ipadx=6, ipady=4)
+        self.cancel_btn = ttk.Button(bottom, text="Batalkan", bootstyle="danger-outline",
+                                      command=self.cancel_processing, state="disabled")
+        self.cancel_btn.grid(row=0, column=1, padx=8)
+
+        self.progress = ttk.Progressbar(bottom, orient="horizontal", mode="determinate", bootstyle="success-striped")
+        self.progress.grid(row=0, column=2, sticky="ew", padx=8)
+
+        self.summary_label = ttk.Label(bottom, text="", bootstyle="secondary")
+        self.summary_label.grid(row=1, column=0, columnspan=3, sticky="w", pady=(10, 0))
 
         self._on_comp_mode_change()
         self._on_res_mode_change()
@@ -398,9 +420,10 @@ class CompressorApp:
 
     def _insert_row(self, item):
         res = f"{item.orig_w}x{item.orig_h}" if item.orig_w else "-"
+        tag = "odd" if len(self.tree.get_children()) % 2 else ""
         self.tree.insert("", "end", iid=item.path, values=(
             os.path.basename(item.path), res, human_size(item.orig_size), item.status, "-"
-        ))
+        ), tags=(tag,) if tag else ())
 
     def remove_selected(self):
         sel = self.tree.selection()
@@ -573,9 +596,10 @@ class CompressorApp:
                     saved = total_orig - total_out
                     pct = (saved / total_orig * 100) if total_orig else 0
                     self.summary_label.config(
-                        text=(f"Selesai: {ok_count} berhasil, {err_count} gagal. "
-                              f"Ukuran total: {human_size(total_orig)} -> {human_size(total_out)} "
-                              f"(hemat {pct:.1f}%).")
+                        text=(f"✅  Selesai: {ok_count} berhasil, {err_count} gagal. "
+                              f"Ukuran total: {human_size(total_orig)} → {human_size(total_out)} "
+                              f"(hemat {pct:.1f}%)."),
+                        bootstyle="success" if err_count == 0 else "warning",
                     )
                     set_state(self.process_btn, True)
                     set_state(self.cancel_btn, False)
@@ -585,15 +609,7 @@ class CompressorApp:
 
 
 def main():
-    root = tk.Tk()
-    try:
-        style = ttk.Style()
-        if "vista" in style.theme_names():
-            style.theme_use("vista")
-        elif "clam" in style.theme_names():
-            style.theme_use("clam")
-    except Exception:  # noqa: BLE001
-        pass
+    root = ttk.Window(themename=THEME)
     app = CompressorApp(root)
     root.mainloop()
 

@@ -28,7 +28,7 @@ pip install pyinstaller
 
 echo.
 echo Membangun file EXE...
-pyinstaller --onefile --windowed --name ImageCompressor main.py
+pyinstaller --onefile --windowed --name ImageCompressor --collect-all ttkbootstrap main.py
 
 echo.
 if exist dist\ImageCompressor.exe (
